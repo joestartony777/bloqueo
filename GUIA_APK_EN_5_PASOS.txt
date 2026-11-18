@@ -1,0 +1,14 @@
+BLOQUEO Android 0.2.0 - Cómo obtener tu APK
+
+IMPORTANTE: Esta carpeta contiene la app nativa por compilar; NO incluye un APK ya generado. El código no ha podido compilarse en este entorno por falta del Android SDK.
+
+1. Sube toda esta carpeta como un repositorio privado de GitHub.
+2. En GitHub entra a Actions > Compilar APK Android.
+3. Pulsa Run workflow. Al terminar, descarga el artefacto BLOQUEO-Android-debug-apk.
+4. Abre el ZIP del artefacto y busca app-debug.apk.
+5. Pásalo a tu celular Android, abre el APK y autoriza su instalación. Ya dentro, activa el servicio de Accesibilidad en Ajustes para probar el bloqueo de las aplicaciones elegidas.
+
+Android 13 o superior: quizá debas entrar en Información de la app > menú > Permitir ajustes restringidos antes de que aparezca habilitado el servicio de Accesibilidad.
+
+FUNCIONA COMO PRUEBA: selección de apps, recomendaciones, modo claro/oscuro, 24/7, L-V, horario personalizado, temporizador y bloqueo de apps por el servicio de Accesibilidad si el teléfono lo permite.
+NO FUNCIONA TODAVÍA: bloqueo de sitios web, contenido adulto, sincronización PC y bloqueo inviolable. No hay que confiar en la beta como protección completa.
