@@ -21,8 +21,11 @@ jobs:
           java-version: '17'
 
 
-      - name: Instalar SDK
-        run: sdkmanager --install 'platforms;android-35' 'build-tools;35.0.0'
+      
+- name: Instalar SDK
+  run: |
+    "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "platforms;android-35" "build-tools;35.0.0"
+
 
       - uses: gradle/actions/setup-gradle@v4
         with:
