@@ -1,0 +1,502 @@
+{
+  "source": "BLOQUEO v0.9.19 - app-windows/internal/blocking/blocking.go",
+  "note": "Catálogo original reutilizado como referencia. La beta Android todavía no aplica bloqueos de dominios.",
+  "platforms": [
+    {
+      "id": "tiktok",
+      "name": "TikTok",
+      "category": "Social",
+      "domains": [
+        "tiktok.com",
+        "tiktokcdn.com",
+        "tiktokv.com",
+        "musical.ly"
+      ]
+    },
+    {
+      "id": "instagram",
+      "name": "Instagram",
+      "category": "Social",
+      "domains": [
+        "instagram.com",
+        "cdninstagram.com"
+      ]
+    },
+    {
+      "id": "facebook",
+      "name": "Facebook",
+      "category": "Social",
+      "domains": [
+        "facebook.com",
+        "fb.com",
+        "fb.watch",
+        "m.facebook.com"
+      ]
+    },
+    {
+      "id": "x",
+      "name": "X / Twitter",
+      "category": "Social",
+      "domains": [
+        "x.com",
+        "twitter.com",
+        "t.co",
+        "twimg.com"
+      ]
+    },
+    {
+      "id": "threads",
+      "name": "Threads",
+      "category": "Social",
+      "domains": [
+        "threads.net",
+        "threads.com"
+      ]
+    },
+    {
+      "id": "snapchat",
+      "name": "Snapchat",
+      "category": "Social",
+      "domains": [
+        "snapchat.com"
+      ]
+    },
+    {
+      "id": "pinterest",
+      "name": "Pinterest",
+      "category": "Social",
+      "domains": [
+        "pinterest.com",
+        "pinimg.com"
+      ]
+    },
+    {
+      "id": "reddit",
+      "name": "Reddit",
+      "category": "Social",
+      "domains": [
+        "reddit.com",
+        "redd.it"
+      ]
+    },
+    {
+      "id": "bluesky",
+      "name": "Bluesky",
+      "category": "Social",
+      "domains": [
+        "bsky.app"
+      ]
+    },
+    {
+      "id": "linkedin",
+      "name": "LinkedIn",
+      "category": "Social",
+      "domains": [
+        "linkedin.com"
+      ]
+    },
+    {
+      "id": "tumblr",
+      "name": "Tumblr",
+      "category": "Social",
+      "domains": [
+        "tumblr.com"
+      ]
+    },
+    {
+      "id": "vk",
+      "name": "VK",
+      "category": "Social",
+      "domains": [
+        "vk.com",
+        "vkontakte.ru"
+      ]
+    },
+    {
+      "id": "kwai",
+      "name": "Kwai",
+      "category": "Social",
+      "domains": [
+        "kwai.com",
+        "kwai-video.com"
+      ]
+    },
+    {
+      "id": "likee",
+      "name": "Likee",
+      "category": "Social",
+      "domains": [
+        "likee.video"
+      ]
+    },
+    {
+      "id": "bereal",
+      "name": "BeReal",
+      "category": "Social",
+      "domains": [
+        "bere.al",
+        "bereal.com"
+      ]
+    },
+    {
+      "id": "weibo",
+      "name": "Weibo",
+      "category": "Social",
+      "domains": [
+        "weibo.com"
+      ]
+    },
+    {
+      "id": "mastodon",
+      "name": "Mastodon",
+      "category": "Social",
+      "domains": [
+        "mastodon.social",
+        "joinmastodon.org"
+      ]
+    },
+    {
+      "id": "wechat",
+      "name": "WeChat",
+      "category": "Mensajería",
+      "domains": [
+        "wechat.com",
+        "weixin.qq.com"
+      ]
+    },
+    {
+      "id": "whatsapp",
+      "name": "WhatsApp Web",
+      "category": "Mensajería",
+      "domains": [
+        "web.whatsapp.com"
+      ]
+    },
+    {
+      "id": "telegram",
+      "name": "Telegram Web",
+      "category": "Mensajería",
+      "domains": [
+        "web.telegram.org"
+      ]
+    },
+    {
+      "id": "discord",
+      "name": "Discord",
+      "category": "Mensajería",
+      "domains": [
+        "discord.com",
+        "discord.gg"
+      ]
+    },
+    {
+      "id": "signal",
+      "name": "Signal",
+      "category": "Mensajería",
+      "domains": [
+        "signal.org"
+      ]
+    },
+    {
+      "id": "messenger",
+      "name": "Messenger",
+      "category": "Mensajería",
+      "domains": [
+        "messenger.com"
+      ]
+    },
+    {
+      "id": "youtube",
+      "name": "YouTube",
+      "category": "Vídeo",
+      "domains": [
+        "youtube.com",
+        "youtu.be",
+        "youtube-nocookie.com"
+      ]
+    },
+    {
+      "id": "twitch",
+      "name": "Twitch",
+      "category": "Vídeo",
+      "domains": [
+        "twitch.tv"
+      ]
+    },
+    {
+      "id": "kick",
+      "name": "Kick",
+      "category": "Vídeo",
+      "domains": [
+        "kick.com"
+      ]
+    },
+    {
+      "id": "dailymotion",
+      "name": "Dailymotion",
+      "category": "Vídeo",
+      "domains": [
+        "dailymotion.com"
+      ]
+    },
+    {
+      "id": "vimeo",
+      "name": "Vimeo",
+      "category": "Vídeo",
+      "domains": [
+        "vimeo.com"
+      ]
+    },
+    {
+      "id": "rumble",
+      "name": "Rumble",
+      "category": "Vídeo",
+      "domains": [
+        "rumble.com"
+      ]
+    },
+    {
+      "id": "netflix",
+      "name": "Netflix",
+      "category": "Streaming",
+      "domains": [
+        "netflix.com"
+      ]
+    },
+    {
+      "id": "disney",
+      "name": "Disney+",
+      "category": "Streaming",
+      "domains": [
+        "disneyplus.com"
+      ]
+    },
+    {
+      "id": "primevideo",
+      "name": "Prime Video",
+      "category": "Streaming",
+      "domains": [
+        "primevideo.com"
+      ]
+    },
+    {
+      "id": "crunchyroll",
+      "name": "Crunchyroll",
+      "category": "Streaming",
+      "domains": [
+        "crunchyroll.com"
+      ]
+    },
+    {
+      "id": "hulu",
+      "name": "Hulu",
+      "category": "Streaming",
+      "domains": [
+        "hulu.com"
+      ]
+    },
+    {
+      "id": "spotify",
+      "name": "Spotify Web",
+      "category": "Streaming",
+      "domains": [
+        "open.spotify.com"
+      ]
+    },
+    {
+      "id": "steam",
+      "name": "Steam",
+      "category": "Juegos",
+      "domains": [
+        "store.steampowered.com",
+        "steamcommunity.com"
+      ]
+    },
+    {
+      "id": "epicgames",
+      "name": "Epic Games",
+      "category": "Juegos",
+      "domains": [
+        "store.epicgames.com"
+      ]
+    },
+    {
+      "id": "roblox",
+      "name": "Roblox",
+      "category": "Juegos",
+      "domains": [
+        "roblox.com"
+      ]
+    },
+    {
+      "id": "chess",
+      "name": "Chess.com",
+      "category": "Juegos",
+      "domains": [
+        "chess.com"
+      ]
+    },
+    {
+      "id": "poki",
+      "name": "Poki",
+      "category": "Juegos",
+      "domains": [
+        "poki.com"
+      ]
+    },
+    {
+      "id": "crazygames",
+      "name": "CrazyGames",
+      "category": "Juegos",
+      "domains": [
+        "crazygames.com"
+      ]
+    },
+    {
+      "id": "9gag",
+      "name": "9GAG",
+      "category": "Entretenimiento",
+      "domains": [
+        "9gag.com"
+      ]
+    },
+    {
+      "id": "imgur",
+      "name": "Imgur",
+      "category": "Entretenimiento",
+      "domains": [
+        "imgur.com"
+      ]
+    },
+    {
+      "id": "tinder",
+      "name": "Tinder",
+      "category": "Entretenimiento",
+      "domains": [
+        "tinder.com"
+      ]
+    },
+    {
+      "id": "bumble",
+      "name": "Bumble",
+      "category": "Entretenimiento",
+      "domains": [
+        "bumble.com"
+      ]
+    },
+    {
+      "id": "lemon8",
+      "name": "Lemon8",
+      "category": "Social",
+      "domains": [
+        "lemon8-app.com",
+        "lemon8.com"
+      ]
+    },
+    {
+      "id": "yubo",
+      "name": "Yubo",
+      "category": "Social",
+      "domains": [
+        "yubo.live"
+      ]
+    },
+    {
+      "id": "nextdoor",
+      "name": "Nextdoor",
+      "category": "Social",
+      "domains": [
+        "nextdoor.com"
+      ]
+    },
+    {
+      "id": "quora",
+      "name": "Quora",
+      "category": "Social",
+      "domains": [
+        "quora.com"
+      ]
+    },
+    {
+      "id": "mewe",
+      "name": "MeWe",
+      "category": "Social",
+      "domains": [
+        "mewe.com"
+      ]
+    },
+    {
+      "id": "rednote",
+      "name": "RedNote / Xiaohongshu",
+      "category": "Social",
+      "domains": [
+        "xiaohongshu.com",
+        "rednote.com"
+      ]
+    },
+    {
+      "id": "line",
+      "name": "LINE",
+      "category": "Mensajería",
+      "domains": [
+        "line.me"
+      ]
+    },
+    {
+      "id": "bilibili",
+      "name": "Bilibili",
+      "category": "Vídeo",
+      "domains": [
+        "bilibili.com"
+      ]
+    },
+    {
+      "id": "douyin",
+      "name": "Douyin",
+      "category": "Vídeo",
+      "domains": [
+        "douyin.com"
+      ]
+    },
+    {
+      "id": "kuaishou",
+      "name": "Kuaishou",
+      "category": "Vídeo",
+      "domains": [
+        "kuaishou.com"
+      ]
+    },
+    {
+      "id": "flickr",
+      "name": "Flickr",
+      "category": "Social",
+      "domains": [
+        "flickr.com"
+      ]
+    },
+    {
+      "id": "vsco",
+      "name": "VSCO",
+      "category": "Social",
+      "domains": [
+        "vsco.co"
+      ]
+    },
+    {
+      "id": "characterai",
+      "name": "Character.AI",
+      "category": "Entretenimiento",
+      "domains": [
+        "character.ai"
+      ]
+    },
+    {
+      "id": "onlyfans",
+      "name": "OnlyFans",
+      "category": "Adultos",
+      "domains": [
+        "onlyfans.com"
+      ]
+    }
+  ]
+}

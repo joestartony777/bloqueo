@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">BLOQUEO</string>
+    <string name="accessibility_description">Durante una sesión activa, BLOQUEO solo detecta el identificador de la aplicación abierta y regresa al inicio si elegiste bloquear esa aplicación. No lee mensajes ni contenido de pantalla. Puedes desactivar este servicio en Ajustes cuando quieras.</string>
+</resources>
