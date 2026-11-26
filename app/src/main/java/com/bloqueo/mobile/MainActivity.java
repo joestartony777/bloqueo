@@ -25,6 +25,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -66,6 +67,8 @@ public final class MainActivity extends Activity {
     private int screen = COMPANION;
     private boolean dark = true;
     private int companion = 0;
+    private String companionName = "";
+    private EditText companionNameInput;
     private int minutes = 25;
     private final List<AppInfo> installedApps = new ArrayList<>();
     private LinearLayout root, body, footer;
@@ -83,6 +86,7 @@ public final class MainActivity extends Activity {
         super.onCreate(b);
         dark = Prefs.of(this).getBoolean(Prefs.DARK, true);
         companion = Prefs.of(this).getInt(Prefs.COMPANION, 0);
+        companionName = Prefs.of(this).getString(Prefs.COMPANION_NAME, "");
         minutes = Prefs.of(this).getInt(Prefs.DURATION, 25);
         screen = Prefs.of(this).getBoolean(Prefs.ONBOARDED, false) ? HOME : COMPANION;
         loadInstalledApps();
@@ -168,8 +172,8 @@ public final class MainActivity extends Activity {
     private ImageView appIconView(String packageName, int sizeDp) {
         ImageView image = new ImageView(this);
         image.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        image.setPadding(d(3), d(3), d(3), d(3));
-        image.setBackground(shape(Color.WHITE, 9, line));
+        image.setPadding(0, 0, 0, 0);
+        image.setBackgroundColor(Color.TRANSPARENT);
 
         ColorMatrix grayscale = new ColorMatrix();
         grayscale.setSaturation(0f);
@@ -188,7 +192,7 @@ public final class MainActivity extends Activity {
         return image;
     }
 
-    private void addSummaryAppRow(AppInfo app, boolean chatAllowed) {
+    private void addSummaryAppRow(AppInfo app, boolean selected, boolean chatAllowed) {
         LinearLayout card = horizontal();
         card.setPadding(d(14), d(10), d(14), d(10));
         card.setBackground(shape(surface, 14, line));
@@ -199,8 +203,11 @@ public final class MainActivity extends Activity {
         labelParams.leftMargin = d(12);
         card.addView(label, labelParams);
 
-        boolean available = Prefs.isMessagingPackage(app.packageName) && chatAllowed;
-        TextView state = text(available ? "Disponible" : "Bloqueada", 12, true, muted);
+        String status;
+        if (!selected) status = "No seleccionada";
+        else if (Prefs.isMessagingPackage(app.packageName) && chatAllowed) status = "Disponible";
+        else status = "Bloqueada";
+        TextView state = text(status, 12, true, status.equals("Bloqueada") ? fg : muted);
         card.addView(state);
 
         LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(-1, d(60));
@@ -242,12 +249,14 @@ public final class MainActivity extends Activity {
         bar.setPadding(d(22), d(16), d(22), d(14));
         TextView brand = text("BLOQUEO", 18, true, fg);
         bar.addView(brand, new LinearLayout.LayoutParams(0, -2, 1));
-        String position = "Móvil · Beta";
+        String position = "";
         if (screen == CHOOSE || screen == SUMMARY) position = "1 de 3";
         if (screen == APPS) position = "2 de 3";
         if (screen == TIME) position = "3 de 3";
-        TextView progress = text(position, 12, false, muted);
-        bar.addView(progress);
+        if (!position.isEmpty()) {
+            TextView progress = text(position, 12, false, muted);
+            bar.addView(progress);
+        }
         TextView toggle = text(dark ? "☀  Claro" : "☾  Oscuro", 13, true, fg);
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-2, d(36));
         p.leftMargin = d(14);
@@ -329,10 +338,28 @@ public final class MainActivity extends Activity {
         next.setOnClickListener(v -> changeCompanion(1));
         chooser.addView(next, new LinearLayout.LayoutParams(d(54), d(54)));
         body.addView(chooser);
+
         addSpace(body, 12);
-        TextView name = text(COMPANIONS[companion], 26, true, fg);
-        name.setGravity(Gravity.CENTER);
-        body.addView(name);
+        addText(body, "Nombre de tu compañero", 14, true, muted, 8);
+        EditText nameInput = new EditText(this);
+        nameInput.setSingleLine(true);
+        nameInput.setTextSize(21);
+        nameInput.setTextColor(fg);
+        nameInput.setHintTextColor(muted);
+        nameInput.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
+        nameInput.setGravity(Gravity.CENTER);
+        nameInput.setPadding(d(14), d(10), d(14), d(10));
+        nameInput.setBackground(shape(surface, 15, line));
+        nameInput.setInputType(android.text.InputType.TYPE_CLASS_TEXT |
+            android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        nameInput.setText(companionName.isEmpty() ? COMPANIONS[companion] : companionName);
+        nameInput.setSelection(nameInput.getText().length());
+        LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(-1, d(54));
+        nameParams.leftMargin = d(12);
+        nameParams.rightMargin = d(12);
+        body.addView(nameInput, nameParams);
+        companionNameInput = nameInput;
+
         addSpace(body, 8);
         TextView desc = text(DESCRIPTIONS[companion], 15, false, muted);
         desc.setGravity(Gravity.CENTER);
@@ -342,13 +369,23 @@ public final class MainActivity extends Activity {
         dots.setGravity(Gravity.CENTER);
         body.addView(dots);
         button("Continuar", () -> {
-            Prefs.of(this).edit().putInt(Prefs.COMPANION, companion).apply();
+            String entered = companionNameInput == null ? "" :
+                companionNameInput.getText().toString().trim();
+            companionName = entered.equals(COMPANIONS[companion]) ? "" : entered;
+            Prefs.of(this).edit().putInt(Prefs.COMPANION, companion)
+                .putString(Prefs.COMPANION_NAME, companionName).apply();
             showScreen(CHOOSE);
         }, true);
     }
 
     private void changeCompanion(int dir) {
+        if (companionNameInput != null) {
+            String entered = companionNameInput.getText().toString().trim();
+            companionName = entered.equals(COMPANIONS[companion]) ? "" : entered;
+        }
         companion = (companion + COMPANIONS.length + dir) % COMPANIONS.length;
+        Prefs.of(this).edit().putInt(Prefs.COMPANION, companion)
+            .putString(Prefs.COMPANION_NAME, companionName).apply();
         render();
         body.setAlpha(0.65f);
         body.setScaleX(0.985f);
@@ -404,8 +441,19 @@ public final class MainActivity extends Activity {
             if (packageName.equals(getPackageName())) continue;
             try {
                 ApplicationInfo a = pm.getApplicationInfo(packageName, 0);
-                if ((a.flags & ApplicationInfo.FLAG_SYSTEM) != 0 && !RECOMMENDED.contains(packageName)) continue;
+                if ((a.flags & ApplicationInfo.FLAG_SYSTEM) != 0 && !RECOMMENDED.contains(packageName) && !Prefs.isMessagingPackage(packageName)) continue;
                 String label = String.valueOf(ri.loadLabel(pm));
+                if (label.trim().isEmpty()) label = packageName;
+                uniques.put(packageName, new AppInfo(label, packageName));
+            } catch (PackageManager.NameNotFoundException ignored) { }
+        }
+        // Add known messaging packages explicitly as well, including system apps
+        // that Android may omit from the launcher query or the user-app filter.
+        for (String packageName : Prefs.messagingPackages()) {
+            try {
+                ApplicationInfo appInfo = pm.getApplicationInfo(packageName, 0);
+                CharSequence appLabel = pm.getApplicationLabel(appInfo);
+                String label = appLabel == null ? packageName : appLabel.toString();
                 if (label.trim().isEmpty()) label = packageName;
                 uniques.put(packageName, new AppInfo(label, packageName));
             } catch (PackageManager.NameNotFoundException ignored) { }
@@ -465,35 +513,33 @@ public final class MainActivity extends Activity {
         List<AppInfo> messagingApps = new ArrayList<>();
 
         for (AppInfo app : installedApps) {
-            if (!selected.contains(app.packageName)) continue;
-            if (Prefs.isMessagingPackage(app.packageName)) messagingApps.add(app);
-            else otherApps.add(app);
+            if (Prefs.isMessagingPackage(app.packageName)) {
+                messagingApps.add(app);
+            } else if (selected.contains(app.packageName)) {
+                otherApps.add(app);
+            }
         }
 
         if (selected.isEmpty()) {
-            addText(body, "Todavía no has seleccionado aplicaciones. Puedes elegirlas ahora.", 16, false, muted, 16);
+            addText(body, "Todavía no has seleccionado aplicaciones. Puedes elegirlas ahora.", 15, false, muted, 12);
             button("Elegir aplicaciones", () -> showScreen(APPS), false);
-        } else {
-            if (!otherApps.isEmpty()) {
-                addText(body, "Otras aplicaciones bloqueadas", 17, true, fg, 10);
-                for (AppInfo app : otherApps) addSummaryAppRow(app, false);
-            }
+        }
 
-            addSpace(body, 8);
-            addText(body, allowed ? "Mensajería disponible" : "Mensajería bloqueada", 18, true, fg, 6);
-            if (messagingApps.isEmpty()) {
-                addText(body,
-                    allowed
-                        ? "No has seleccionado apps de mensajería. Si las seleccionas, seguirán disponibles mientras esta opción esté activa."
-                        : "No has seleccionado aplicaciones de mensajería para bloquear.",
-                    13, false, muted, 10);
-            } else {
-                addText(body,
-                    allowed
-                        ? "Estas aplicaciones están seleccionadas, pero se mantendrán disponibles."
-                        : "Estas son las aplicaciones de mensajería que BLOQUEO impedirá abrir durante tus sesiones.",
-                    13, false, muted, 10);
-                for (AppInfo app : messagingApps) addSummaryAppRow(app, allowed);
+        if (!otherApps.isEmpty()) {
+            addText(body, "Otras aplicaciones bloqueadas", 17, true, fg, 10);
+            for (AppInfo app : otherApps) addSummaryAppRow(app, true, false);
+        }
+
+        addSpace(body, 8);
+        addText(body, "Aplicaciones de mensajería", 18, true, fg, 6);
+        addText(body,
+            "Aquí aparecen las aplicaciones de mensajería instaladas y su estado real en tu selección.",
+            13, false, muted, 10);
+        if (messagingApps.isEmpty()) {
+            addText(body, "No se detectaron aplicaciones de mensajería compatibles instaladas en este dispositivo.", 13, false, muted, 10);
+        } else {
+            for (AppInfo app : messagingApps) {
+                addSummaryAppRow(app, selected.contains(app.packageName), allowed);
             }
         }
 
@@ -513,7 +559,7 @@ public final class MainActivity extends Activity {
         });
         body.addView(chatRow);
         addSpace(body, 10);
-        addText(body, "Si activas esta opción, las apps de mensajería seleccionadas quedan disponibles. Si la desactivas, BLOQUEO aplica el bloqueo también a esas apps. El filtrado web y de contenido adulto aún no está implementado.", 13, false, muted, 0);
+        addText(body, "Las apps seleccionadas aparecen como «Bloqueada». Si no están seleccionadas, no se bloquean. Al activar «Mantener disponibles», las apps de mensajería seleccionadas quedan fuera del bloqueo.", 13, false, muted, 0);
         button("Editar selección", () -> showScreen(APPS), false);
         button("Confirmar y continuar", () -> {
             if (Prefs.blocked(this).isEmpty()) showScreen(APPS);
@@ -628,6 +674,12 @@ public final class MainActivity extends Activity {
 
     private void renderHome() {
         screenTitle("Tu enfoque empieza aquí.", "Haz espacio para lo que sí importa.");
+        int savedCompanion = Prefs.of(this).getInt(Prefs.COMPANION, 0);
+        String savedCompanionName = Prefs.of(this).getString(Prefs.COMPANION_NAME, "").trim();
+        String displayedCompanionName = savedCompanionName.isEmpty()
+            ? COMPANIONS[Math.max(0, Math.min(savedCompanion, COMPANIONS.length - 1))]
+            : savedCompanionName;
+        addText(body, "Tu compañero: " + displayedCompanionName, 14, true, muted, 8);
         addSpace(body, 4);
         long remaining = Math.max(0, Prefs.of(this).getLong(Prefs.END, 0) - System.currentTimeMillis());
         String schedule = Prefs.of(this).getString(Prefs.SCHEDULE, "session");
