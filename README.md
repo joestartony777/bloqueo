@@ -1,4 +1,4 @@
-# BLOQUEO para Android — beta nativa 0.2.1
+# BLOQUEO para Android — beta nativa 0.2.2
 
 **Estado: código fuente preparado para compilar, no APK compilado ni probado en teléfono.** El entorno donde se preparó este proyecto no dispone del SDK de Android, Gradle ni acceso a los paquetes de compilación, por lo que no se puede afirmar que la compilación o el bloqueo funcionen en un dispositivo real. El workflow de GitHub Actions incluido permite obtener un APK de depuración al ejecutarse en un entorno que sí tenga Internet.
 
@@ -6,6 +6,7 @@
 
 - Nombre, personalidad visual, círculos provisionales para compañeros/iconos, cinco compañeros, tema claro/oscuro, preguntas y flujo de onboarding.
 - Nombre del compañero personalizable durante la selección y editable después desde la pantalla principal; se guarda localmente.
+- En la selección manual, preselecciona hasta tres redes sociales con mayor tiempo de uso de los últimos siete días, si el usuario autoriza el acceso al uso de Android; muestra los tiempos detectados y permite modificar la selección.
 - Selección entre recomendaciones y elección manual, resumen, selección de aplicaciones, opciones para dejar mensajería disponible y sesiones de enfoque.
 - Los horarios 24/7, de lunes a viernes y personalizados por días/horas, adaptados a Android.
 - El catálogo **original** de 59 plataformas y dominios de Windows se incluye en `app/src/main/assets/catalogo_bloqueo_escritorio.json` y el archivo de origen en `shared/blocking_original_windows.go`, para no perder esa lógica/datos al continuar el desarrollo. **Ese catálogo no se usa todavía como filtro de red Android.**
