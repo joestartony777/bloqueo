@@ -18,10 +18,15 @@ import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
 import android.text.TextUtils;
+import android.text.Editable;
+import android.text.InputFilter;
+import android.text.InputType;
+import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -66,6 +71,8 @@ public final class MainActivity extends Activity {
     private int screen = COMPANION;
     private boolean dark = true;
     private int companion = 0;
+    private String companionNameDraft = "";
+    private EditText companionNameInput;
     private int minutes = 25;
     private final List<AppInfo> installedApps = new ArrayList<>();
     private LinearLayout root, body, footer;
@@ -83,6 +90,8 @@ public final class MainActivity extends Activity {
         super.onCreate(b);
         dark = Prefs.of(this).getBoolean(Prefs.DARK, true);
         companion = Prefs.of(this).getInt(Prefs.COMPANION, 0);
+        companionNameDraft = Prefs.of(this).getString(Prefs.COMPANION_NAME, "");
+        if (companionNameDraft == null) companionNameDraft = "";
         minutes = Prefs.of(this).getInt(Prefs.DURATION, 25);
         screen = Prefs.of(this).getBoolean(Prefs.ONBOARDED, false) ? HOME : COMPANION;
         loadInstalledApps();
@@ -101,6 +110,49 @@ public final class MainActivity extends Activity {
     }
 
     private int d(float dp) { return Math.round(dp * getResources().getDisplayMetrics().density); }
+
+    private String normalizeCompanionName(String value) {
+        return value == null ? "" : value.trim().replaceAll("\\s+", " ");
+    }
+
+    private String companionName() {
+        String saved = normalizeCompanionName(Prefs.of(this).getString(Prefs.COMPANION_NAME, ""));
+        return saved.isEmpty() ? COMPANIONS[companion] : saved;
+    }
+
+    private EditText companionNameEditor(String initial) {
+        EditText input = new EditText(this);
+        input.setSingleLine(true);
+        input.setTextSize(16);
+        input.setTextColor(fg);
+        input.setHintTextColor(muted);
+        input.setHint("Nombre del compañero");
+        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        input.setFilters(new InputFilter[]{new InputFilter.LengthFilter(20)});
+        input.setPadding(d(14), d(12), d(14), d(12));
+        input.setBackground(shape(surface, 14, line));
+        input.setText(initial);
+        input.setSelection(input.getText().length());
+        return input;
+    }
+
+    private void renameCompanion() {
+        EditText editor = companionNameEditor(companionName());
+        new AlertDialog.Builder(this)
+            .setTitle("Nombre del compañero")
+            .setView(editor, d(24), d(8), d(24), d(0))
+            .setNegativeButton("Cancelar", null)
+            .setPositiveButton("Guardar", (dialog, which) -> {
+                String name = normalizeCompanionName(editor.getText().toString());
+                if (name.isEmpty()) {
+                    Toast.makeText(this, "Escribe un nombre para tu compañero", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                Prefs.of(this).edit().putString(Prefs.COMPANION_NAME, name).apply();
+                companionNameDraft = name;
+                render();
+            }).show();
+    }
 
     private void theme() {
         bg = Color.parseColor(dark ? "#09090B" : "#FFFFFF");
@@ -290,16 +342,45 @@ public final class MainActivity extends Activity {
         desc.setGravity(Gravity.CENTER);
         body.addView(desc);
         addSpace(body, 25);
+        addText(body, "¿Cómo quieres llamarlo?", 14, true, fg, 8);
+        String initialName = companionNameDraft.isEmpty() ? COMPANIONS[companion] : companionNameDraft;
+        companionNameInput = companionNameEditor(initialName);
+        companionNameInput.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
+                companionNameDraft = normalizeCompanionName(s.toString());
+            }
+            @Override public void afterTextChanged(Editable s) { }
+        });
+        body.addView(companionNameInput, new LinearLayout.LayoutParams(-1, d(54)));
+        companionNameInput.clearFocus();
+        root.setFocusableInTouchMode(true);
+        root.requestFocus();
+        addSpace(body, 18);
         TextView dots = text("●  ●  ●  ●  ●", 15, false, muted);
         dots.setGravity(Gravity.CENTER);
         body.addView(dots);
         button("Continuar", () -> {
-            Prefs.of(this).edit().putInt(Prefs.COMPANION, companion).apply();
+            String chosenName = normalizeCompanionName(companionNameInput.getText().toString());
+            if (chosenName.isEmpty()) {
+                Toast.makeText(this, "Escribe un nombre para tu compañero", Toast.LENGTH_SHORT).show();
+                companionNameInput.requestFocus();
+                return;
+            }
+            companionNameDraft = chosenName;
+            Prefs.of(this).edit().putInt(Prefs.COMPANION, companion)
+                .putString(Prefs.COMPANION_NAME, chosenName).apply();
+            companionNameInput = null;
             showScreen(CHOOSE);
         }, true);
     }
 
     private void changeCompanion(int dir) {
+        String currentName = companionNameInput == null
+            ? normalizeCompanionName(companionNameDraft)
+            : normalizeCompanionName(companionNameInput.getText().toString());
+        companionNameDraft = currentName.equals(COMPANIONS[companion]) ? "" : currentName;
+        companionNameInput = null;
         companion = (companion + COMPANIONS.length + dir) % COMPANIONS.length;
         render();
         body.setAlpha(0.65f);
@@ -563,7 +644,7 @@ public final class MainActivity extends Activity {
     }
 
     private void renderHome() {
-        screenTitle("Tu enfoque empieza aquí.", "Haz espacio para lo que sí importa.");
+        screenTitle("Tu enfoque empieza aquí.", companionName() + " te acompaña en tus sesiones y metas.");
         addSpace(body, 4);
         long remaining = Math.max(0, Prefs.of(this).getLong(Prefs.END, 0) - System.currentTimeMillis());
         String schedule = Prefs.of(this).getString(Prefs.SCHEDULE, "session");
@@ -620,6 +701,7 @@ public final class MainActivity extends Activity {
         }
         button("Cambiar horario", () -> showScreen(TIME), false);
         button("Cambiar aplicaciones", () -> showScreen(APPS), false);
+        button("Cambiar nombre del compañero", this::renameCompanion, false);
     }
 
     @Override public void onBackPressed() {
