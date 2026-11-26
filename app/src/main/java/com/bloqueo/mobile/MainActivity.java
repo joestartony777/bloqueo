@@ -160,7 +160,7 @@ public final class MainActivity extends Activity {
         EditText editor = companionNameEditor(companionName());
         new AlertDialog.Builder(this)
             .setTitle("Nombre del compañero")
-            .setView(editor, d(24), d(8), d(24), d(0))
+            .setView(editor)
             .setNegativeButton("Cancelar", null)
             .setPositiveButton("Guardar", (dialog, which) -> {
                 String name = normalizeCompanionName(editor.getText().toString());
