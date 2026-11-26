@@ -12,6 +12,8 @@ final class Prefs {
     static final String START = "session_start";
     static final String DARK = "dark";
     static final String COMPANION = "companion";
+    static final String COMPANION_NAME = "companion_name";
+    static final String PENDING_USAGE_SELECTION = "pending_usage_selection";
     static final String ONBOARDED = "onboarded";
     static final String MODE = "mode";
     static final String DURATION = "duration";

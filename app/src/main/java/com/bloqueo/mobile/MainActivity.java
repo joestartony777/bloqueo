@@ -1,8 +1,12 @@
 package com.bloqueo.mobile;
 
 import android.app.Activity;
+import android.app.AppOpsManager;
+import android.app.usage.UsageStats;
+import android.app.usage.UsageStatsManager;
 import android.app.AlertDialog;
 import android.app.TimePickerDialog;
+import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
@@ -16,12 +20,18 @@ import android.content.res.ColorStateList;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.Process;
 import android.provider.Settings;
 import android.text.TextUtils;
+import android.text.Editable;
+import android.text.InputFilter;
+import android.text.InputType;
+import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -56,6 +66,13 @@ public final class MainActivity extends Activity {
         "com.snapchat.android", "com.netflix.mediaclient", "com.reddit.frontpage",
         "com.pinterest", "com.discord", "com.google.android.apps.youtube.music"
     ));
+    private static final Set<String> SOCIAL_NETWORKS = new HashSet<>(Arrays.asList(
+        "com.instagram.android", "com.instagram.barcelona", "com.zhiliaoapp.musically",
+        "com.ss.android.ugc.trill", "com.google.android.youtube", "com.facebook.katana",
+        "com.twitter.android", "com.snapchat.android", "com.reddit.frontpage",
+        "com.pinterest", "com.linkedin.android", "tv.twitch.android.app"
+    ));
+    private static final int MAX_USAGE_RECOMMENDATIONS = 3;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable tick = new Runnable() {
         @Override public void run() {
@@ -66,8 +83,12 @@ public final class MainActivity extends Activity {
     private int screen = COMPANION;
     private boolean dark = true;
     private int companion = 0;
+    private String companionNameDraft = "";
+    private EditText companionNameInput;
     private int minutes = 25;
     private final List<AppInfo> installedApps = new ArrayList<>();
+    private final Map<String, Long> socialUsageTimes = new HashMap<>();
+    private String manualRecommendationMessage = "";
     private LinearLayout root, body, footer;
     private int bg, fg, muted, surface, line, primary, onPrimary;
 
@@ -83,6 +104,8 @@ public final class MainActivity extends Activity {
         super.onCreate(b);
         dark = Prefs.of(this).getBoolean(Prefs.DARK, true);
         companion = Prefs.of(this).getInt(Prefs.COMPANION, 0);
+        companionNameDraft = Prefs.of(this).getString(Prefs.COMPANION_NAME, "");
+        if (companionNameDraft == null) companionNameDraft = "";
         minutes = Prefs.of(this).getInt(Prefs.DURATION, 25);
         screen = Prefs.of(this).getBoolean(Prefs.ONBOARDED, false) ? HOME : COMPANION;
         loadInstalledApps();
@@ -92,7 +115,13 @@ public final class MainActivity extends Activity {
 
     @Override protected void onResume() {
         super.onResume();
-        if (root != null && screen == HOME) render();
+        if (root == null) return;
+        if (Prefs.of(this).getBoolean(Prefs.PENDING_USAGE_SELECTION, false)) {
+            Prefs.of(this).edit().remove(Prefs.PENDING_USAGE_SELECTION).apply();
+            completeManualSelection(hasUsageAccess());
+        } else if (screen == HOME) {
+            render();
+        }
     }
 
     @Override protected void onDestroy() {
@@ -101,6 +130,49 @@ public final class MainActivity extends Activity {
     }
 
     private int d(float dp) { return Math.round(dp * getResources().getDisplayMetrics().density); }
+
+    private String normalizeCompanionName(String value) {
+        return value == null ? "" : value.trim().replaceAll("\\s+", " ");
+    }
+
+    private String companionName() {
+        String saved = normalizeCompanionName(Prefs.of(this).getString(Prefs.COMPANION_NAME, ""));
+        return saved.isEmpty() ? COMPANIONS[companion] : saved;
+    }
+
+    private EditText companionNameEditor(String initial) {
+        EditText input = new EditText(this);
+        input.setSingleLine(true);
+        input.setTextSize(16);
+        input.setTextColor(fg);
+        input.setHintTextColor(muted);
+        input.setHint("Nombre del compañero");
+        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        input.setFilters(new InputFilter[]{new InputFilter.LengthFilter(20)});
+        input.setPadding(d(14), d(12), d(14), d(12));
+        input.setBackground(shape(surface, 14, line));
+        input.setText(initial);
+        input.setSelection(input.getText().length());
+        return input;
+    }
+
+    private void renameCompanion() {
+        EditText editor = companionNameEditor(companionName());
+        new AlertDialog.Builder(this)
+            .setTitle("Nombre del compañero")
+            .setView(editor)
+            .setNegativeButton("Cancelar", null)
+            .setPositiveButton("Guardar", (dialog, which) -> {
+                String name = normalizeCompanionName(editor.getText().toString());
+                if (name.isEmpty()) {
+                    Toast.makeText(this, "Escribe un nombre para tu compañero", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                Prefs.of(this).edit().putString(Prefs.COMPANION_NAME, name).apply();
+                companionNameDraft = name;
+                render();
+            }).show();
+    }
 
     private void theme() {
         bg = Color.parseColor(dark ? "#09090B" : "#FFFFFF");
@@ -194,12 +266,14 @@ public final class MainActivity extends Activity {
         bar.setPadding(d(22), d(16), d(22), d(14));
         TextView brand = text("BLOQUEO", 18, true, fg);
         bar.addView(brand, new LinearLayout.LayoutParams(0, -2, 1));
-        String position = "Móvil · Beta";
+        String position = "";
         if (screen == CHOOSE || screen == SUMMARY) position = "1 de 3";
         if (screen == APPS) position = "2 de 3";
         if (screen == TIME) position = "3 de 3";
-        TextView progress = text(position, 12, false, muted);
-        bar.addView(progress);
+        if (!position.isEmpty()) {
+            TextView progress = text(position, 12, false, muted);
+            bar.addView(progress);
+        }
         TextView toggle = text(dark ? "☀  Claro" : "☾  Oscuro", 13, true, fg);
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-2, d(36));
         p.leftMargin = d(14);
@@ -290,16 +364,45 @@ public final class MainActivity extends Activity {
         desc.setGravity(Gravity.CENTER);
         body.addView(desc);
         addSpace(body, 25);
+        addText(body, "¿Cómo quieres llamarlo?", 14, true, fg, 8);
+        String initialName = companionNameDraft.isEmpty() ? COMPANIONS[companion] : companionNameDraft;
+        companionNameInput = companionNameEditor(initialName);
+        companionNameInput.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
+                companionNameDraft = normalizeCompanionName(s.toString());
+            }
+            @Override public void afterTextChanged(Editable s) { }
+        });
+        body.addView(companionNameInput, new LinearLayout.LayoutParams(-1, d(54)));
+        companionNameInput.clearFocus();
+        root.setFocusableInTouchMode(true);
+        root.requestFocus();
+        addSpace(body, 18);
         TextView dots = text("●  ●  ●  ●  ●", 15, false, muted);
         dots.setGravity(Gravity.CENTER);
         body.addView(dots);
         button("Continuar", () -> {
-            Prefs.of(this).edit().putInt(Prefs.COMPANION, companion).apply();
+            String chosenName = normalizeCompanionName(companionNameInput.getText().toString());
+            if (chosenName.isEmpty()) {
+                Toast.makeText(this, "Escribe un nombre para tu compañero", Toast.LENGTH_SHORT).show();
+                companionNameInput.requestFocus();
+                return;
+            }
+            companionNameDraft = chosenName;
+            Prefs.of(this).edit().putInt(Prefs.COMPANION, companion)
+                .putString(Prefs.COMPANION_NAME, chosenName).apply();
+            companionNameInput = null;
             showScreen(CHOOSE);
         }, true);
     }
 
     private void changeCompanion(int dir) {
+        String currentName = companionNameInput == null
+            ? normalizeCompanionName(companionNameDraft)
+            : normalizeCompanionName(companionNameInput.getText().toString());
+        companionNameDraft = currentName.equals(COMPANIONS[companion]) ? "" : currentName;
+        companionNameInput = null;
         companion = (companion + COMPANIONS.length + dir) % COMPANIONS.length;
         render();
         body.setAlpha(0.65f);
@@ -335,12 +438,98 @@ public final class MainActivity extends Activity {
             Prefs.of(this).edit().putString(Prefs.MODE, "recommended").apply();
             showScreen(SUMMARY);
         }, true);
-        button("Prefiero elegir", () -> {
-            Prefs.setBlocked(this, new HashSet<>());
-            Prefs.of(this).edit().putBoolean(Prefs.ALLOW_CHAT, false)
-                .putString(Prefs.MODE, "manual").apply();
-            showScreen(APPS);
-        }, false);
+        button("Prefiero elegir", this::beginManualSelection, false);
+    }
+
+    private void beginManualSelection() {
+        Prefs.of(this).edit().putBoolean(Prefs.ALLOW_CHAT, false)
+            .putString(Prefs.MODE, "manual").apply();
+        if (hasUsageAccess()) {
+            completeManualSelection(true);
+            return;
+        }
+        new AlertDialog.Builder(this)
+            .setTitle("Detectar tus redes más usadas")
+            .setMessage("Para preseleccionar las redes sociales que más utilizas, BLOQUEO necesita consultar el tiempo de uso de tus aplicaciones durante los últimos 7 días. Android te pedirá habilitar el acceso al uso. No se leen mensajes ni el contenido de tus pantallas.")
+            .setNegativeButton("Elegir sin medir", (dialog, which) -> completeManualSelection(false))
+            .setPositiveButton("Continuar", (dialog, which) -> {
+                Prefs.of(this).edit().putBoolean(Prefs.PENDING_USAGE_SELECTION, true).apply();
+                try {
+                    startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS));
+                } catch (ActivityNotFoundException ex) {
+                    Prefs.of(this).edit().remove(Prefs.PENDING_USAGE_SELECTION).apply();
+                    completeManualSelection(false);
+                }
+            }).show();
+    }
+
+    private boolean hasUsageAccess() {
+        AppOpsManager appOps = (AppOpsManager) getSystemService(APP_OPS_SERVICE);
+        if (appOps == null) return false;
+        int mode = appOps.checkOpNoThrow(
+            AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), getPackageName());
+        return mode == AppOpsManager.MODE_ALLOWED;
+    }
+
+    private void completeManualSelection(boolean usageAccessGranted) {
+        socialUsageTimes.clear();
+        Set<String> selected = new HashSet<>();
+        List<AppInfo> ranked = new ArrayList<>();
+
+        if (usageAccessGranted) {
+            UsageStatsManager manager = (UsageStatsManager) getSystemService(USAGE_STATS_SERVICE);
+            if (manager != null) {
+                long end = System.currentTimeMillis();
+                long start = end - 7L * 24L * 60L * 60L * 1000L;
+                try {
+                    Map<String, UsageStats> usage = manager.queryAndAggregateUsageStats(start, end);
+                    for (AppInfo app : installedApps) {
+                        if (!SOCIAL_NETWORKS.contains(app.packageName)) continue;
+                        UsageStats stats = usage == null ? null : usage.get(app.packageName);
+                        long foreground = stats == null ? 0L : stats.getTotalTimeInForeground();
+                        socialUsageTimes.put(app.packageName, foreground);
+                        if (foreground > 0L) ranked.add(app);
+                    }
+                } catch (RuntimeException ignored) {
+                    socialUsageTimes.clear();
+                }
+            }
+            ranked.sort((a, b) -> Long.compare(
+                socialUsageTimes.get(b.packageName), socialUsageTimes.get(a.packageName)));
+            for (int i = 0; i < Math.min(MAX_USAGE_RECOMMENDATIONS, ranked.size()); i++) {
+                selected.add(ranked.get(i).packageName);
+            }
+        }
+
+        if (!selected.isEmpty()) {
+            int count = selected.size();
+            manualRecommendationMessage = "Preseleccionamos las " + count
+                + (count == 1 ? " red social que más usaste" : " redes sociales que más usaste")
+                + " durante los últimos 7 días. Puedes modificar la selección.";
+        } else {
+            for (AppInfo app : installedApps) {
+                if (SOCIAL_NETWORKS.contains(app.packageName)) selected.add(app.packageName);
+            }
+            if (selected.isEmpty()) {
+                manualRecommendationMessage = "No detectamos redes sociales compatibles instaladas. Puedes elegir cualquier aplicación de la lista.";
+            } else if (usageAccessGranted) {
+                manualRecommendationMessage = "No encontramos datos de uso de redes sociales de los últimos 7 días. Preseleccionamos las redes sociales instaladas; puedes modificar la selección.";
+            } else {
+                manualRecommendationMessage = "No activaste el acceso al uso. Preseleccionamos las redes sociales instaladas, pero todavía no podemos saber cuáles utilizas más.";
+            }
+        }
+
+        Prefs.setBlocked(this, selected);
+        showScreen(APPS);
+    }
+
+    private String formatUsage(long milliseconds) {
+        long totalMinutes = milliseconds / 60_000L;
+        long hours = totalMinutes / 60L;
+        long minutes = totalMinutes % 60L;
+        if (hours > 0L) return hours + " h " + minutes + " min";
+        if (totalMinutes == 0L) return "menos de 1 min";
+        return totalMinutes + " min";
     }
 
     private void loadInstalledApps() {
@@ -370,6 +559,14 @@ public final class MainActivity extends Activity {
     private void renderApps() {
         back(() -> showScreen(CHOOSE));
         screenTitle("Elige qué quieres dejar atrás", "Selecciona las aplicaciones que no quieres abrir durante tus sesiones.");
+        if (!manualRecommendationMessage.isEmpty()) {
+            LinearLayout note = vertical(14);
+            note.setBackground(shape(surface, 16, line));
+            addText(note, "Selección inicial", 14, true, fg, 6);
+            addText(note, manualRecommendationMessage, 13, false, muted, 0);
+            body.addView(note);
+            addSpace(body, 12);
+        }
         Set<String> selected = Prefs.blocked(this);
         TextView counter = text(selected.size() + " aplicaciones seleccionadas", 13, true, muted);
         body.addView(counter);
@@ -377,14 +574,23 @@ public final class MainActivity extends Activity {
         if (installedApps.isEmpty()) addText(body, "No se encontraron aplicaciones. Revisa los permisos de visibilidad del dispositivo.", 15, false, muted, 0);
         for (AppInfo app : installedApps) {
             LinearLayout card = horizontal();
-            card.setPadding(d(14), d(11), d(14), d(11));
+            card.setPadding(d(14), d(10), d(14), d(10));
             card.setBackground(shape(surface, 14, line));
             TextView ico = circlePlaceholder(40);
             card.addView(ico);
-            TextView label = text(app.name, 15, true, fg);
+            LinearLayout details = vertical(0);
+            addText(details, app.name, 15, true, fg, 0);
+            boolean hasUsage = socialUsageTimes.containsKey(app.packageName);
+            if (hasUsage) {
+                long usage = socialUsageTimes.get(app.packageName);
+                String usageLabel = usage > 0L
+                    ? "Uso en 7 días · " + formatUsage(usage)
+                    : "Sin uso registrado en 7 días";
+                addText(details, usageLabel, 11, false, muted, 0);
+            }
             LinearLayout.LayoutParams ll = new LinearLayout.LayoutParams(0, -2, 1);
             ll.leftMargin = d(12);
-            card.addView(label, ll);
+            card.addView(details, ll);
             TextView check = text(selected.contains(app.packageName) ? "✓" : "+", 18, true, selected.contains(app.packageName) ? primary : muted);
             card.addView(check);
             card.setOnClickListener(v -> {
@@ -393,12 +599,12 @@ public final class MainActivity extends Activity {
                 Prefs.setBlocked(this, current);
                 render();
             });
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, d(66));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, d(hasUsage ? 76 : 66));
             lp.bottomMargin = d(8);
             body.addView(card, lp);
         }
         addSpace(body, 10);
-        addText(body, "Contenido adulto: el filtro de sitios web todavía no está disponible en esta beta Android. No se marcará como protegido hasta implementarlo.", 13, false, muted, 0);
+        addText(body, "El filtro de contenido adulto para sitios web todavía no está disponible. BLOQUEO no marcará esa protección como activa.", 13, false, muted, 0);
         button("Continuar", () -> {
             if (Prefs.blocked(this).isEmpty()) {
                 Toast.makeText(this, "Selecciona al menos una aplicación", Toast.LENGTH_SHORT).show();
@@ -563,7 +769,7 @@ public final class MainActivity extends Activity {
     }
 
     private void renderHome() {
-        screenTitle("Tu enfoque empieza aquí.", "Haz espacio para lo que sí importa.");
+        screenTitle("Tu enfoque empieza aquí.", companionName() + " te acompaña en tus sesiones y metas.");
         addSpace(body, 4);
         long remaining = Math.max(0, Prefs.of(this).getLong(Prefs.END, 0) - System.currentTimeMillis());
         String schedule = Prefs.of(this).getString(Prefs.SCHEDULE, "session");
@@ -620,6 +826,7 @@ public final class MainActivity extends Activity {
         }
         button("Cambiar horario", () -> showScreen(TIME), false);
         button("Cambiar aplicaciones", () -> showScreen(APPS), false);
+        button("Cambiar nombre del compañero", this::renameCompanion, false);
     }
 
     @Override public void onBackPressed() {
