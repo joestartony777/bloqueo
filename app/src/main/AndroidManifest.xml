@@ -5,6 +5,24 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
+        <package android:name="com.whatsapp" />
+        <package android:name="com.whatsapp.w4b" />
+        <package android:name="org.telegram.messenger" />
+        <package android:name="org.telegram.messenger.web" />
+        <package android:name="org.thunderdog.challegram" />
+        <package android:name="com.discord" />
+        <package android:name="com.facebook.orca" />
+        <package android:name="jp.naver.line.android" />
+        <package android:name="org.thoughtcrime.securesms" />
+        <package android:name="com.viber.voip" />
+        <package android:name="com.slack" />
+        <package android:name="com.microsoft.teams" />
+        <package android:name="com.skype.raider" />
+        <package android:name="com.google.android.apps.messaging" />
+        <package android:name="com.tencent.mm" />
+        <package android:name="com.kakao.talk" />
+        <package android:name="im.vector.app" />
+        <package android:name="com.google.android.apps.dynamite" />
     </queries>
     <application
         android:allowBackup="false"
