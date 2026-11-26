@@ -4,7 +4,9 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Locale;
 
 final class Prefs {
     private static final String STORE = "bloqueo_mobile_0_1";
@@ -21,6 +23,15 @@ final class Prefs {
     static final String DAYS = "schedule_days";
     static final String ALLOW_CHAT = "allow_chat";
     private static final String BLOCKED = "blocked_packages";
+    private static final Set<String> MESSAGING_PACKAGES = new HashSet<>(Arrays.asList(
+        "com.whatsapp", "com.whatsapp.w4b",
+        "org.telegram.messenger", "org.telegram.messenger.web", "org.thunderdog.challegram",
+        "com.discord", "com.facebook.orca", "jp.naver.line.android",
+        "org.thoughtcrime.securesms", "com.viber.voip", "com.slack",
+        "com.microsoft.teams", "com.skype.raider", "com.google.android.apps.messaging",
+        "com.tencent.mm", "com.kakao.talk", "im.vector.app",
+        "com.google.android.apps.dynamite"
+    ));
 
     private Prefs() { }
 
@@ -61,6 +72,10 @@ final class Prefs {
 
     static boolean chatAllowed(Context c) {
         return of(c).getBoolean(ALLOW_CHAT, false);
+    }
+
+    static boolean isMessagingPackage(String packageName) {
+        return packageName != null && MESSAGING_PACKAGES.contains(packageName.toLowerCase(Locale.ROOT));
     }
 
     static void setSchedule(Context c, String mode) {
