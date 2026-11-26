@@ -9,7 +9,10 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Color;
+import android.graphics.ColorMatrix;
+import android.graphics.ColorMatrixColorFilter;
 import android.graphics.Typeface;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.RippleDrawable;
 import android.content.res.ColorStateList;
@@ -23,6 +26,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -46,10 +50,6 @@ public final class MainActivity extends Activity {
         "Curioso y dinámico.", "Sereno y constante.", "Directo y decidido.",
         "Creativa y optimista.", "Tu impulso para avanzar."
     };
-    private static final Set<String> MESSAGING = new HashSet<>(Arrays.asList(
-        "com.whatsapp", "com.whatsapp.w4b", "org.telegram.messenger", "org.telegram.messenger.web",
-        "com.discord", "org.thoughtcrime.securesms", "com.facebook.orca", "jp.naver.line.android"
-    ));
     private static final Set<String> RECOMMENDED = new HashSet<>(Arrays.asList(
         "com.instagram.android", "com.zhiliaoapp.musically", "com.ss.android.ugc.trill",
         "com.google.android.youtube", "com.facebook.katana", "com.twitter.android",
@@ -160,6 +160,54 @@ public final class MainActivity extends Activity {
         lp.bottomMargin = d(bottom);
         to.addView(t, lp);
     }
+    /**
+     * Uses the installed app's real launcher icon. The grayscale filter keeps
+     * BLOQUEO's black-and-white visual language without replacing app logos
+     * with generic circles.
+     */
+    private ImageView appIconView(String packageName, int sizeDp) {
+        ImageView image = new ImageView(this);
+        image.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        image.setPadding(d(3), d(3), d(3), d(3));
+        image.setBackground(shape(Color.WHITE, 9, line));
+
+        ColorMatrix grayscale = new ColorMatrix();
+        grayscale.setSaturation(0f);
+        ColorMatrixColorFilter filter = new ColorMatrixColorFilter(grayscale);
+
+        try {
+            Drawable icon = getPackageManager().getApplicationIcon(packageName).mutate();
+            icon.setColorFilter(filter);
+            image.setImageDrawable(icon);
+        } catch (PackageManager.NameNotFoundException e) {
+            image.setImageResource(android.R.drawable.sym_def_app_icon);
+            image.setColorFilter(filter);
+        }
+
+        image.setLayoutParams(new LinearLayout.LayoutParams(d(sizeDp), d(sizeDp)));
+        return image;
+    }
+
+    private void addSummaryAppRow(AppInfo app, boolean chatAllowed) {
+        LinearLayout card = horizontal();
+        card.setPadding(d(14), d(10), d(14), d(10));
+        card.setBackground(shape(surface, 14, line));
+        card.addView(appIconView(app.packageName, 40));
+
+        TextView label = text(app.name, 15, true, fg);
+        LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(0, -2, 1);
+        labelParams.leftMargin = d(12);
+        card.addView(label, labelParams);
+
+        boolean available = Prefs.isMessagingPackage(app.packageName) && chatAllowed;
+        TextView state = text(available ? "Disponible" : "Bloqueada", 12, true, muted);
+        card.addView(state);
+
+        LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(-1, d(60));
+        rowParams.bottomMargin = d(9);
+        body.addView(card, rowParams);
+    }
+
     private TextView circlePlaceholder(int diameter) {
         TextView v = text("", 16, true, fg);
         v.setGravity(Gravity.CENTER);
@@ -379,7 +427,7 @@ public final class MainActivity extends Activity {
             LinearLayout card = horizontal();
             card.setPadding(d(14), d(11), d(14), d(11));
             card.setBackground(shape(surface, 14, line));
-            TextView ico = circlePlaceholder(40);
+            ImageView ico = appIconView(app.packageName, 40);
             card.addView(ico);
             TextView label = text(app.name, 15, true, fg);
             LinearLayout.LayoutParams ll = new LinearLayout.LayoutParams(0, -2, 1);
@@ -410,35 +458,51 @@ public final class MainActivity extends Activity {
 
     private void renderSummary() {
         back(() -> showScreen(CHOOSE));
-        screenTitle("Tu protección está lista.", "Revisa las aplicaciones recomendadas para bloquear.");
+        screenTitle("Tu protección está lista.", "Revisa qué aplicaciones quedarán bloqueadas.");
         Set<String> selected = Prefs.blocked(this);
-        if (selected.isEmpty()) {
-            addText(body, "No encontramos redes de entretenimiento entre tus apps instaladas. Elige algunas manualmente.", 16, false, muted, 16);
-            button("Elegir aplicaciones", () -> showScreen(APPS), false);
-        }
+        boolean allowed = Prefs.chatAllowed(this);
+        List<AppInfo> otherApps = new ArrayList<>();
+        List<AppInfo> messagingApps = new ArrayList<>();
+
         for (AppInfo app : installedApps) {
             if (!selected.contains(app.packageName)) continue;
-            LinearLayout card = horizontal();
-            card.setPadding(d(14), d(10), d(14), d(10));
-            card.setBackground(shape(surface, 14, line));
-            card.addView(circlePlaceholder(40));
-            TextView label = text(app.name, 15, true, fg);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -2, 1);
-            lp.leftMargin = d(12);
-            card.addView(label, lp);
-            TextView enabled = text("Bloqueada", 12, true, muted);
-            card.addView(enabled);
-            LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(-1, d(60));
-            cp.bottomMargin = d(9);
-            body.addView(card, cp);
+            if (Prefs.isMessagingPackage(app.packageName)) messagingApps.add(app);
+            else otherApps.add(app);
         }
+
+        if (selected.isEmpty()) {
+            addText(body, "Todavía no has seleccionado aplicaciones. Puedes elegirlas ahora.", 16, false, muted, 16);
+            button("Elegir aplicaciones", () -> showScreen(APPS), false);
+        } else {
+            if (!otherApps.isEmpty()) {
+                addText(body, "Otras aplicaciones bloqueadas", 17, true, fg, 10);
+                for (AppInfo app : otherApps) addSummaryAppRow(app, false);
+            }
+
+            addSpace(body, 8);
+            addText(body, allowed ? "Mensajería disponible" : "Mensajería bloqueada", 18, true, fg, 6);
+            if (messagingApps.isEmpty()) {
+                addText(body,
+                    allowed
+                        ? "No has seleccionado apps de mensajería. Si las seleccionas, seguirán disponibles mientras esta opción esté activa."
+                        : "No has seleccionado aplicaciones de mensajería para bloquear.",
+                    13, false, muted, 10);
+            } else {
+                addText(body,
+                    allowed
+                        ? "Estas aplicaciones están seleccionadas, pero se mantendrán disponibles."
+                        : "Estas son las aplicaciones de mensajería que BLOQUEO impedirá abrir durante tus sesiones.",
+                    13, false, muted, 10);
+                for (AppInfo app : messagingApps) addSummaryAppRow(app, allowed);
+            }
+        }
+
         addSpace(body, 16);
         LinearLayout chatRow = horizontal();
         chatRow.setPadding(d(14), d(15), d(14), d(15));
         chatRow.setBackground(shape(surface, 16, line));
         TextView chatLabel = text("Mantener aplicaciones de mensajería disponibles", 15, true, fg);
         chatRow.addView(chatLabel, new LinearLayout.LayoutParams(0, -2, 1));
-        boolean allowed = Prefs.chatAllowed(this);
         TextView chatSwitch = text(allowed ? "ACTIVADO" : "DESACTIVADO", 12, true, allowed ? fg : muted);
         LinearLayout.LayoutParams swParams = new LinearLayout.LayoutParams(-2, -2);
         swParams.leftMargin = d(8);
@@ -449,7 +513,7 @@ public final class MainActivity extends Activity {
         });
         body.addView(chatRow);
         addSpace(body, 10);
-        addText(body, "La opción de mensajería excluye las apps compatibles del bloqueo, aunque sigan seleccionadas. El filtrado web y de contenido adulto aún no está implementado.", 13, false, muted, 0);
+        addText(body, "Si activas esta opción, las apps de mensajería seleccionadas quedan disponibles. Si la desactivas, BLOQUEO aplica el bloqueo también a esas apps. El filtrado web y de contenido adulto aún no está implementado.", 13, false, muted, 0);
         button("Editar selección", () -> showScreen(APPS), false);
         button("Confirmar y continuar", () -> {
             if (Prefs.blocked(this).isEmpty()) showScreen(APPS);
@@ -603,7 +667,15 @@ public final class MainActivity extends Activity {
         addSpace(body, 24);
         addText(body, "Aplicaciones seleccionadas: " + Prefs.blocked(this).size(), 15, true, fg, 10);
         for (AppInfo app : installedApps) {
-            if (Prefs.blocked(this).contains(app.packageName)) addText(body, "· " + app.name, 14, false, muted, 7);
+            if (!Prefs.blocked(this).contains(app.packageName)) continue;
+            LinearLayout appRow = horizontal();
+            appRow.addView(appIconView(app.packageName, 30));
+            TextView appName = text(app.name, 14, false, muted);
+            LinearLayout.LayoutParams appNameParams = new LinearLayout.LayoutParams(0, -2, 1);
+            appNameParams.leftMargin = d(10);
+            appRow.addView(appName, appNameParams);
+            body.addView(appRow);
+            addSpace(body, 7);
         }
         addSpace(body, 15);
         if (active || (!"session".equals(schedule) && !"paused".equals(schedule))) {
